@@ -18,7 +18,7 @@ const GradeShader = {
     time: { value: 0 },
     vignette: { value: 1.15 },
     aberration: { value: 0.9 },
-    grain: { value: 0.08 },
+    grain: { value: 0.055 },
     fear: { value: 0.0 },
   },
   vertexShader: /* glsl */ `
@@ -54,8 +54,8 @@ const GradeShader = {
       float lum = dot(col, vec3(0.299, 0.587, 0.114));
       col = mix(col, vec3(lum) * vec3(1.15, 0.55, 0.5), fear * 0.5);
 
-      // film grain (animated)
-      float n = hash(uv * 1024.0 + fract(time) * 100.0) - 0.5;
+      // film grain (animated) — use pixel coords for precision-safe, non-streaky noise
+      float n = hash(gl_FragCoord.xy + fract(time) * 60.0) - 0.5;
       col += n * (grain + fear * 0.06);
 
       // vignette
@@ -81,7 +81,7 @@ export class PostProcessing {
   build(): void {
     const { renderer, scene, camera, quality } = this.engine;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.3;
 
     // clear existing passes
     this.composer.passes.slice().forEach((p) => this.composer.removePass(p));

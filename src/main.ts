@@ -125,7 +125,7 @@ function boot(): void {
   const ui = new Ui({
     onBegin: () => { state = 'warning'; ui.showWarning(); },
     onAccept: () => startGame(),
-    onResume: () => { ui.hidePause(); input.requestLock(); },
+    onResume: () => resumeGame(),
     onQuality: (q) => applyQuality(q),
     onSensitivity: (v) => { input.sensitivity = v; },
     onMaster: (v) => audio.setMasterVolume(v),
@@ -141,11 +141,23 @@ function boot(): void {
 
   // ---- input ----
   const input = new Input(engine.renderer.domElement);
-  input.onInteract = () => { if (state === 'playing' && !loop.transitioning) interaction.use(); };
-  input.onPause = () => { if (state === 'playing') input.exitLock(); };
+  input.onInteract = () => { if (state === 'playing' && input.locked && !loop.transitioning) interaction.use(); };
+  // Esc toggles the pause menu
+  input.onPause = () => {
+    if (state === 'playing') { state = 'paused'; ui.hideClickHint(); input.exitLock(); ui.showPause(); }
+    else if (state === 'paused') resumeGame();
+  };
+  // clicking the world while unlocked (re)captures the pointer — the key fix
+  input.onCanvasClick = () => { if (state === 'playing' && !input.locked) input.requestLock(); };
   input.onLockChange = (locked) => {
-    if (!locked && state === 'playing') { state = 'paused'; ui.showPause(); }
-    else if (locked && state === 'paused') { state = 'playing'; ui.hidePause(); }
+    if (locked) {
+      state = 'playing';
+      ui.hideClickHint();
+      ui.hidePause();
+    } else if (state === 'playing') {
+      // lost the pointer without opening the menu → invite a click to resume
+      ui.showClickHint();
+    }
   };
 
   async function startGame(): Promise<void> {
@@ -154,6 +166,14 @@ function boot(): void {
     ui.enterGame();
     state = 'playing';
     loop.begin();
+    ui.showClickHint();   // stays until the pointer actually locks
+    input.requestLock();
+  }
+
+  function resumeGame(): void {
+    ui.hidePause();
+    state = 'playing';
+    ui.showClickHint();
     input.requestLock();
   }
 
