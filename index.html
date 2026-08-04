@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>P.T. — 2</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%94%AA%3C/text%3E%3C/svg%3E" />
+    <style>
+      :root {
+        --blood: #7a0b0b;
+        --blood-bright: #c81212;
+        --bone: #cfc8bd;
+        --dim: #6b655c;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+      body {
+        font-family: 'Times New Roman', Georgia, serif;
+        color: var(--bone);
+        cursor: default;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #app { position: fixed; inset: 0; }
+      canvas { display: block; width: 100%; height: 100%; }
+
+      /* ---- Fade / vignette layers ---- */
+      #fade {
+        position: fixed; inset: 0; background: #000; pointer-events: none;
+        opacity: 1; transition: opacity 0.6s ease; z-index: 40;
+      }
+      #damage {
+        position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 38;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(90,0,0,0.85) 100%);
+        transition: opacity 0.15s ease;
+      }
+      #flash {
+        position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 45;
+        background: #fff;
+      }
+
+      /* ---- Overlays (menus) ---- */
+      .overlay {
+        position: fixed; inset: 0; z-index: 50; display: flex;
+        flex-direction: column; align-items: center; justify-content: center;
+        text-align: center; padding: 6vh 6vw;
+        background: radial-gradient(ellipse at center, rgba(6,4,4,0.72) 0%, rgba(0,0,0,0.96) 100%);
+        backdrop-filter: blur(2px);
+      }
+      .overlay.hidden { display: none; }
+
+      .title {
+        font-size: clamp(3rem, 12vw, 9rem);
+        letter-spacing: 0.4em;
+        color: var(--bone);
+        text-shadow: 0 0 30px rgba(200,18,18,0.35), 0 0 8px rgba(0,0,0,0.9);
+        margin-left: 0.4em;
+        animation: titleFlicker 6s infinite;
+      }
+      .subtitle {
+        margin-top: 1.2rem; font-size: clamp(0.9rem, 2.4vw, 1.3rem);
+        letter-spacing: 0.5em; color: var(--dim); text-transform: uppercase;
+      }
+      @keyframes titleFlicker {
+        0%, 100% { opacity: 1; }
+        41% { opacity: 1; } 42% { opacity: 0.35; } 43% { opacity: 1; }
+        88% { opacity: 1; } 89% { opacity: 0.15; } 90% { opacity: 1; }
+      }
+
+      .card {
+        max-width: 720px; line-height: 1.7; font-size: clamp(0.95rem, 2vw, 1.15rem);
+        color: #b9b1a5;
+      }
+      .card h2 {
+        color: var(--blood-bright); letter-spacing: 0.25em; text-transform: uppercase;
+        font-size: 1.1rem; margin-bottom: 1.2rem; font-weight: normal;
+      }
+      .warn-list { text-align: left; margin: 1.4rem auto; max-width: 460px; color: #9a9184; }
+      .warn-list li { margin: 0.35rem 0; list-style: none; padding-left: 1.4em; position: relative; }
+      .warn-list li::before { content: '†'; position: absolute; left: 0; color: var(--blood); }
+
+      button.menu-btn {
+        margin-top: 2.4rem; padding: 0.9rem 3rem; font-family: inherit;
+        font-size: 1.05rem; letter-spacing: 0.35em; text-transform: uppercase;
+        color: var(--bone); background: transparent;
+        border: 1px solid rgba(180,170,155,0.35); cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      button.menu-btn:hover {
+        color: #fff; border-color: var(--blood-bright);
+        box-shadow: 0 0 24px rgba(200,18,18,0.4) inset, 0 0 18px rgba(200,18,18,0.25);
+        letter-spacing: 0.45em;
+      }
+      .hint { margin-top: 2.5rem; font-size: 0.8rem; letter-spacing: 0.3em; color: #4a453e; text-transform: uppercase; }
+
+      /* ---- Settings ---- */
+      .settings { display: flex; flex-direction: column; gap: 1.1rem; width: min(440px, 86vw); text-align: left; }
+      .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      .setting-row label { letter-spacing: 0.15em; text-transform: uppercase; font-size: 0.85rem; color: #9a9184; }
+      .setting-row input[type=range] { flex: 1; max-width: 220px; accent-color: var(--blood-bright); }
+      .setting-row select {
+        background: #0c0a0a; color: var(--bone); border: 1px solid rgba(180,170,155,0.3);
+        padding: 0.35rem 0.6rem; font-family: inherit; letter-spacing: 0.1em;
+      }
+
+      /* ---- HUD ---- */
+      #hud { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+      #reticle {
+        position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
+        transform: translate(-50%, -50%); border-radius: 50%;
+        background: rgba(220,215,205,0.55); box-shadow: 0 0 4px rgba(0,0,0,0.8);
+        transition: width 0.15s, height 0.15s, background 0.15s;
+      }
+      #reticle.active { width: 11px; height: 11px; background: rgba(220,60,60,0.85); }
+      #prompt {
+        position: absolute; top: 58%; left: 50%; transform: translateX(-50%);
+        letter-spacing: 0.25em; text-transform: uppercase; font-size: 0.85rem;
+        color: rgba(220,215,205,0.85); text-shadow: 0 2px 6px #000; opacity: 0;
+        transition: opacity 0.2s;
+      }
+      #prompt.show { opacity: 1; }
+      #subtitle {
+        position: absolute; bottom: 9%; left: 50%; transform: translateX(-50%);
+        max-width: 70vw; text-align: center; font-style: italic; font-size: 1.15rem;
+        color: #d8d2c8; text-shadow: 0 2px 10px #000, 0 0 20px rgba(0,0,0,0.9);
+        opacity: 0; transition: opacity 0.4s;
+      }
+      #subtitle.show { opacity: 1; }
+      #loop-indicator {
+        position: absolute; top: 4%; right: 4%; letter-spacing: 0.3em;
+        font-size: 0.75rem; color: rgba(150,20,20,0.5); text-transform: uppercase;
+      }
+
+      #pause-hint {
+        position: fixed; bottom: 3%; left: 50%; transform: translateX(-50%); z-index: 31;
+        font-size: 0.72rem; letter-spacing: 0.28em; color: #3f3a34; text-transform: uppercase;
+        pointer-events: none;
+      }
+
+      .corner-note { position: fixed; bottom: 2%; right: 2.5%; font-size: 0.7rem; letter-spacing: 0.2em; color: #322e29; z-index: 51; }
+
+      /* Loading */
+      #loading { z-index: 60; }
+      .loading-bar { width: min(320px, 70vw); height: 2px; background: #1a1614; margin-top: 2rem; overflow: hidden; }
+      .loading-bar > i { display: block; height: 100%; width: 0%; background: var(--blood-bright); transition: width 0.3s; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- Screen-space effect layers -->
+    <div id="flash"></div>
+    <div id="damage"></div>
+    <div id="fade"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="reticle"></div>
+      <div id="prompt"></div>
+      <div id="subtitle"></div>
+      <div id="loop-indicator"></div>
+    </div>
+    <div id="pause-hint" class="hidden">Esc — pause</div>
+
+    <!-- Loading -->
+    <div id="loading" class="overlay">
+      <div class="title" style="font-size: clamp(2rem,8vw,5rem)">P·T·2</div>
+      <div class="subtitle">summoning</div>
+      <div class="loading-bar"><i id="loading-fill"></i></div>
+    </div>
+
+    <!-- Start / title -->
+    <div id="start" class="overlay hidden">
+      <h1 class="title">P·T·2</h1>
+      <div class="subtitle">a playable nightmare</div>
+      <button class="menu-btn" id="btn-begin">Enter</button>
+      <div class="hint">headphones recommended · fullscreen advised</div>
+    </div>
+
+    <!-- Content warning -->
+    <div id="warning" class="overlay hidden">
+      <div class="card">
+        <h2>Content Warning</h2>
+        <p>This experience is designed to frighten. It contains:</p>
+        <ul class="warn-list">
+          <li>Sudden loud noises and jump scares</li>
+          <li>Flashing lights and strobe effects</li>
+          <li>Graphic imagery, blood and gore</li>
+          <li>Intense psychological horror and disturbing themes</li>
+        </ul>
+        <p>Not suitable for children or those with photosensitive epilepsy, heart conditions, or anxiety disorders.</p>
+        <button class="menu-btn" id="btn-accept">I Understand</button>
+        <div class="hint">click to grant mouse control · move: W A S D · interact: E</div>
+      </div>
+    </div>
+
+    <!-- Pause / settings -->
+    <div id="pause" class="overlay hidden">
+      <div class="card">
+        <h2>Paused</h2>
+        <div class="settings">
+          <div class="setting-row">
+            <label for="set-quality">Graphics</label>
+            <select id="set-quality">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high" selected>High</option>
+              <option value="ultra">Ultra</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label for="set-sens">Look sensitivity</label>
+            <input type="range" id="set-sens" min="0.2" max="3" step="0.1" value="1" />
+          </div>
+          <div class="setting-row">
+            <label for="set-master">Master volume</label>
+            <input type="range" id="set-master" min="0" max="1" step="0.05" value="0.9" />
+          </div>
+          <div class="setting-row">
+            <label for="set-invert">Invert look Y</label>
+            <input type="checkbox" id="set-invert" />
+          </div>
+        </div>
+        <button class="menu-btn" id="btn-resume">Resume</button>
+        <div class="hint">click resume, then click the screen to continue</div>
+      </div>
+    </div>
+
+    <div class="corner-note">it does not end</div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
