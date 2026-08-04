@@ -10,6 +10,7 @@ export class Apparition extends Scare {
   private opacity = 0;
   private target = 0.8;
   private headPoint = new THREE.Vector3();
+  private breathStop: (() => void) | null = null;
 
   protected onStart(): void {
     // stand at the far end of the main corridor, facing the player
@@ -19,7 +20,8 @@ export class Apparition extends Scare {
     this.opacity = 0;
     this.target = 0.85;
     this.ctx.scene.add(this.fig.group);
-    this.ctx.audio.whisper(0);
+    // her presence is announced by slow, raspy breathing — no cheap sting
+    this.breathStop = this.ctx.audio.breathing(0);
     this.ctx.audio.setTension(0.6);
   }
 
@@ -34,14 +36,12 @@ export class Apparition extends Scare {
     // vanish if the player gets close or stares it down
     if (dist < 3.5 || (staring && this.t > 1.5) || this.t > 10) {
       this.target = 0;
-      if (this.opacity < 0.05) {
-        if (staring || dist < 3.5) this.ctx.audio.stinger(0.5);
-        this.finish();
-      }
+      if (this.opacity < 0.05) this.finish();
     }
   }
 
   protected onEnd(): void {
+    if (this.breathStop) { this.breathStop(); this.breathStop = null; }
     this.ctx.scene.remove(this.fig.group);
     this.ctx.audio.setTension(0.2);
   }
@@ -54,6 +54,7 @@ export class BehindYou extends Scare {
   private opacity = 0;
   private lunged = false;
   private headPoint = new THREE.Vector3();
+  private breathStop: (() => void) | null = null;
 
   protected onStart(): void {
     const p = this.ctx.behind(2.6);
@@ -63,6 +64,8 @@ export class BehindYou extends Scare {
     this.opacity = 0;
     this.ctx.scene.add(this.fig.group);
     this.ctx.audio.footstep(0, 0.35);
+    // breathing right behind you
+    this.breathStop = this.ctx.audio.breathing(0);
     this.ctx.audio.setTension(0.7);
   }
 
@@ -76,6 +79,7 @@ export class BehindYou extends Scare {
     const looking = this.ctx.isLookingAt(this.headPoint, 0.55);
     if (looking && !this.lunged) {
       this.lunged = true;
+      if (this.breathStop) { this.breathStop(); this.breathStop = null; }
       this.ctx.audio.stinger(1);
       this.ctx.ui.flash(0.9);
       this.ctx.lighting.flicker(0.6);
@@ -98,6 +102,7 @@ export class BehindYou extends Scare {
   }
 
   protected onEnd(): void {
+    if (this.breathStop) { this.breathStop(); this.breathStop = null; }
     this.ctx.scene.remove(this.fig.group);
     this.ctx.audio.setTension(0.2);
   }

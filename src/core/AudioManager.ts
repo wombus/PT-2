@@ -143,43 +143,109 @@ export class AudioManager {
 
   // ---- One-shots ----------------------------------------------------------
 
-  /** Loud, sharp jump-scare stinger. intensity 0..1 */
+  /** Cinematic jump-scare hit — a dissonant cluster + noise swell + sub drop,
+   *  deliberately organic (no chiptune sawtooth). intensity 0..1 */
   stinger(intensity = 1): void {
     if (!this.ctx) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
 
-    // Noise burst
+    // 1. Air/impact: broadband noise sweeping downward
     const noise = ctx.createBufferSource();
     noise.buffer = this.getNoise();
     const nf = ctx.createBiquadFilter();
     nf.type = 'bandpass';
-    nf.frequency.value = 900;
-    nf.Q.value = 0.7;
-    const ng = this.envGain(0.004, 0.05, 0.7, 0.9 * intensity);
+    nf.frequency.setValueAtTime(3200, t);
+    nf.frequency.exponentialRampToValueAtTime(320, t + 0.55);
+    nf.Q.value = 0.6;
+    const ng = this.envGain(0.004, 0.05, 0.75, 0.85 * intensity);
     noise.connect(nf).connect(ng).connect(this.master);
     noise.start(t);
     noise.stop(t + 1.0);
 
-    // Descending screech
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(1400, t);
-    osc.frequency.exponentialRampToValueAtTime(70, t + 0.6);
-    const og = this.envGain(0.005, 0.08, 0.5, 0.5 * intensity);
-    osc.connect(og).connect(this.master);
-    osc.start(t);
-    osc.stop(t + 0.7);
+    // 2. Dissonant tonal cluster — triangle voices (soft, organic) a minor-second apart
+    const cluster = [146.83, 155.56, 207.65, 220.0];
+    for (const f of cluster) {
+      const o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f * 1.03, t);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.5);
+      const og = this.envGain(0.006, 0.12, 0.7, 0.16 * intensity);
+      o.connect(og).connect(this.master);
+      o.start(t);
+      o.stop(t + 0.9);
+    }
 
-    // Sub thud for body
+    // 3. Sub drop for body
     const sub = ctx.createOscillator();
     sub.type = 'sine';
-    sub.frequency.setValueAtTime(80, t);
-    sub.frequency.exponentialRampToValueAtTime(30, t + 0.5);
-    const sg = this.envGain(0.005, 0.1, 0.5, 0.9 * intensity);
+    sub.frequency.setValueAtTime(95, t);
+    sub.frequency.exponentialRampToValueAtTime(28, t + 0.5);
+    const sg = this.envGain(0.005, 0.1, 0.55, 0.95 * intensity);
     sub.connect(sg).connect(this.master);
     sub.start(t);
     sub.stop(t + 0.7);
+  }
+
+  /**
+   * Slow, raspy breathing that loops until the returned stopper is called.
+   * Used when the apparition is present — presence, not a jump scare.
+   */
+  breathing(pan = 0): () => void {
+    if (!this.ctx) return () => {};
+    const ctx = this.ctx;
+    const bus = ctx.createGain();
+    bus.gain.value = 1;
+    bus.connect(this.panner(pan)).connect(this.master);
+
+    let stopped = false;
+    const breath = (inhale: boolean): void => {
+      if (stopped || !this.ctx) return;
+      const now = ctx.currentTime;
+      const dur = inhale ? 1.0 : 1.35;
+      const src = ctx.createBufferSource();
+      src.buffer = this.getNoise();
+      src.playbackRate.value = 0.5;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.1;
+      bp.frequency.setValueAtTime(inhale ? 320 : 820, now);
+      bp.frequency.linearRampToValueAtTime(inhale ? 950 : 240, now + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(inhale ? 0.1 : 0.13, now + dur * 0.42);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      src.connect(bp).connect(g).connect(bus);
+      src.start(now);
+      src.stop(now + dur + 0.05);
+      // faint low throat rasp under the exhale
+      if (!inhale) {
+        const rasp = ctx.createOscillator();
+        rasp.type = 'sawtooth';
+        rasp.frequency.value = 58;
+        const rg = ctx.createGain();
+        rg.gain.setValueAtTime(0.0001, now);
+        rg.gain.exponentialRampToValueAtTime(0.03, now + 0.2);
+        rg.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        const rlp = ctx.createBiquadFilter();
+        rlp.type = 'lowpass'; rlp.frequency.value = 200;
+        rasp.connect(rlp).connect(rg).connect(bus);
+        rasp.start(now); rasp.stop(now + dur);
+      }
+    };
+
+    let inhale = true;
+    breath(true);
+    const iv = window.setInterval(() => {
+      inhale = !inhale;
+      breath(inhale);
+    }, 1700);
+
+    return () => {
+      stopped = true;
+      clearInterval(iv);
+      if (this.ctx) bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4);
+    };
   }
 
   /** Breathy whisper, panned. */
