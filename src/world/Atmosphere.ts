@@ -48,10 +48,10 @@ export class Atmosphere {
 
     const mat = new THREE.PointsMaterial({
       map: moteSprite(),
-      size: 0.03,
+      size: 0.022,
       sizeAttenuation: true,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.32,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       color: 0xffe9c8,

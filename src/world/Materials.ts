@@ -100,7 +100,7 @@ export function wallpaperMaterial(): THREE.MeshStandardMaterial {
     }
   }
   // grime + water stains
-  valueNoise(ctx, size, 64, 0.12);
+  valueNoise(ctx, size, 64, 0.08);
   const grad = ctx.createLinearGradient(0, 0, 0, size);
   grad.addColorStop(0, 'rgba(10,6,4,0.55)');
   grad.addColorStop(0.5, 'rgba(10,6,4,0)');
@@ -135,7 +135,7 @@ export function wallpaperMaterial(): THREE.MeshStandardMaterial {
     normalMap,
     roughness: 0.92,
     metalness: 0,
-    normalScale: new THREE.Vector2(0.6, 0.6),
+    normalScale: new THREE.Vector2(0.75, 0.75),
   });
   map.repeat.set(3, 2);
   normalMap.repeat.set(3, 2);
@@ -187,16 +187,37 @@ export function floorMaterial(): THREE.MeshStandardMaterial {
   }
   valueNoise(hctx, size, 128, 0.4);
 
+  // roughness map: varnished wood — mostly glossy (dark), rougher at gaps/grain
+  // and in patchy worn areas, so the practicals leave a wet specular streak.
+  const { c: rc, ctx: rctx } = makeCanvas(size);
+  rctx.fillStyle = '#565656';                 // ~0.34 base gloss
+  rctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += plankH) {
+    rctx.fillStyle = '#b4b4b4';                // rough seams
+    rctx.fillRect(0, y, size, 3);
+  }
+  rctx.strokeStyle = 'rgba(150,150,150,0.5)';  // grain slightly rougher
+  rctx.lineWidth = 1;
+  for (let i = 0; i < 60; i++) {
+    rctx.beginPath();
+    const gy = Math.random() * size;
+    rctx.moveTo(0, gy);
+    rctx.bezierCurveTo(size * 0.3, gy + 4, size * 0.6, gy - 4, size, gy);
+    rctx.stroke();
+  }
+  valueNoise(rctx, size, 48, 0.4);             // patchy wear
+
   const map = tex(c, true);
   const normalMap = heightToNormal(hc, 1.8);
-  map.repeat.set(4, 8);
-  normalMap.repeat.set(4, 8);
+  const roughnessMap = tex(rc, false);
+  for (const t of [map, normalMap, roughnessMap]) t.repeat.set(4, 8);
   const mat = new THREE.MeshStandardMaterial({
     map,
     normalMap,
-    roughness: 0.55,
+    roughnessMap,
+    roughness: 1.0,          // modulated by the map (final ~0.34–0.7)
     metalness: 0.0,
-    normalScale: new THREE.Vector2(0.5, 0.5),
+    normalScale: new THREE.Vector2(0.6, 0.6),
   });
   return mat;
 }
