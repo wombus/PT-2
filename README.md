@@ -48,6 +48,12 @@ the start of the same hallway, one loop deeper and more wrong. It does not end.
   pass (vignette, chromatic aberration, film grain, "fear" desaturation) over
   procedurally-generated PBR materials, warm practical lighting, and volumetric
   fog. Four quality presets (Low → Ultra), auto-detected on first launch.
+- **Hyper-real atmosphere** — a swinging pendant lamp that drags its
+  shadow-casting light so shadows crawl across the hall, a real live mirror
+  reflection (`Reflector`, gated to High/Ultra), dust motes drifting and
+  thickening in the light, a faint volumetric god-ray cone, wet mirror-slick
+  blood pools, and layered architectural trim (wainscot, chair rails, door
+  casings, crown molding).
 - **A broad scare system** — Lisa-style apparitions (including behind you when you
   turn), total blackouts with flash-reveals, a charging figure that resets the
   loop on contact, changing portraits, a face in the bathroom mirror, wrong-hour

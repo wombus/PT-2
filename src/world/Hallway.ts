@@ -69,6 +69,49 @@ export class Hallway {
       crown.position.set(cx, wallH - 0.05, cz);
       this.group.add(crown);
     }
+
+    // wainscoting + chair rail on the long main-corridor walls (X-normal)
+    // [cx, cz, sz, sign] — sign points from the wall toward the corridor
+    const wainscots: [number, number, number, number][] = [
+      [LAYOUT.wallX, -5, 14, -1],       // right wall (full length)
+      [-LAYOUT.wallX, -3.95, 11.8, +1], // left wall (upper part)
+    ];
+    for (const [cx, cz, sz, sign] of wainscots) {
+      const backer = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.79, sz * 0.98), trimMat);
+      backer.position.set(cx + sign * 0.06, 0.555, cz);
+      this.group.add(backer);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, sz + 0.02), trimMat);
+      rail.position.set(cx + sign * 0.05, 0.95, cz);
+      this.group.add(rail);
+      const stiles = Math.max(2, Math.floor(sz / 0.9));
+      for (let i = 0; i <= stiles; i++) {
+        const z = cz - sz / 2 + (i / stiles) * sz;
+        const stile = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.79, 0.05), trimMat);
+        stile.position.set(cx + sign * 0.075, 0.555, z);
+        this.group.add(stile);
+      }
+    }
+
+    // door casings (jambs + header)
+    const casing = (cx: number, cz: number, vertical: boolean, w: number): void => {
+      const jambGeo = vertical
+        ? new THREE.BoxGeometry(0.04, 2.2, 0.09)
+        : new THREE.BoxGeometry(0.09, 2.2, 0.04);
+      const headGeo = vertical
+        ? new THREE.BoxGeometry(0.04, 0.1, w + 0.18)
+        : new THREE.BoxGeometry(w + 0.18, 0.1, 0.04);
+      for (const s of [-1, 1]) {
+        const jamb = new THREE.Mesh(jambGeo, trimMat);
+        if (vertical) jamb.position.set(cx, 1.1, cz + s * w / 2);
+        else jamb.position.set(cx + s * w / 2, 1.1, cz);
+        this.group.add(jamb);
+      }
+      const header = new THREE.Mesh(headGeo, trimMat);
+      header.position.set(cx, 2.16, cz);
+      this.group.add(header);
+    };
+    casing(-10.86, -10.9, true, 0.95);  // end door (X-normal wall)
+    casing(0, 1.98, false, 1.1);        // landing door (Z-normal wall)
   }
 
   get material(): THREE.MeshStandardMaterial {

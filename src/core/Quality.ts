@@ -7,6 +7,8 @@ export interface QualitySettings {
   bloom: boolean;
   grade: boolean;          // vignette / grain / chromatic aberration pass
   fogDensity: number;
+  reflections: boolean;    // live mirror Reflector (extra scene render)
+  particles: number;       // dust-mote count (0 disables)
 }
 
 export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
@@ -17,6 +19,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     bloom: true,
     grade: true,
     fogDensity: 0.11,
+    reflections: false,
+    particles: 250,
   },
   medium: {
     pixelRatio: 1.25,
@@ -25,6 +29,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     bloom: true,
     grade: true,
     fogDensity: 0.1,
+    reflections: false,
+    particles: 600,
   },
   high: {
     pixelRatio: 1.5,
@@ -33,6 +39,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     bloom: true,
     grade: true,
     fogDensity: 0.09,
+    reflections: true,
+    particles: 1100,
   },
   ultra: {
     pixelRatio: 2,
@@ -41,6 +49,8 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
     bloom: true,
     grade: true,
     fogDensity: 0.085,
+    reflections: true,
+    particles: 1800,
   },
 };
 

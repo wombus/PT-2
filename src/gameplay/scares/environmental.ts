@@ -109,16 +109,36 @@ export class Bloodbath extends Scare {
       [-4, 0.02, -11.4, 0],  // floor near far wall (handled below)
       [-2, 0.02, -6, 0],
     ];
+    const envMap = this.ctx.scene.environment;
     for (let i = 0; i < spots.length; i++) {
       const [x, y, z, yaw] = spots[i];
+      const onFloor = y < 0.1;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.8), mat);
-      if (y < 0.1) { m.rotation.x = -Math.PI / 2; } else { m.rotation.y = yaw; }
+      if (onFloor) { m.rotation.x = -Math.PI / 2; } else { m.rotation.y = yaw; }
       m.position.set(x, y, z);
       m.scale.setScalar(0.01);
       m.renderOrder = 1;
       this.ctx.scene.add(m);
       this.decals.push(m);
       Bloodbath.pool.push(m);
+
+      // wet, mirror-slick pool under floor blood
+      if (onFloor) {
+        const pool = new THREE.Mesh(
+          new THREE.CircleGeometry(0.7, 24),
+          new THREE.MeshStandardMaterial({
+            color: 0x1a0202, roughness: 0.06, metalness: 0.85,
+            envMap, envMapIntensity: 1.0, transparent: true, opacity: 0.9,
+          }),
+        );
+        pool.rotation.x = -Math.PI / 2;
+        pool.position.set(x, 0.012, z);
+        pool.scale.setScalar(0.01);
+        pool.renderOrder = 0;
+        this.ctx.scene.add(pool);
+        this.decals.push(pool);
+        Bloodbath.pool.push(pool);
+      }
     }
     // cap total persistent decals
     while (Bloodbath.pool.length > 24) {

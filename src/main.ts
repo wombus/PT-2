@@ -8,6 +8,7 @@ import { detectQuality, type QualityLevel } from './core/Quality';
 import { Hallway } from './world/Hallway';
 import { Lighting } from './world/Lighting';
 import { Props } from './world/Props';
+import { Atmosphere } from './world/Atmosphere';
 import { Player } from './gameplay/Player';
 import { Interaction } from './gameplay/Interaction';
 import { ScareSystem } from './gameplay/ScareSystem';
@@ -67,8 +68,11 @@ function boot(): void {
       radioStop = audio.radioStatic(0.14);
       ui.say(pick(radioLines), 6);
     },
-  });
+  }, engine.quality.reflections);
   engine.scene.add(props.group);
+
+  let atmosphere = new Atmosphere(engine.quality.particles);
+  engine.scene.add(atmosphere.group);
 
   const player = new Player(engine.camera);
   const post = new PostProcessing(engine);
@@ -160,6 +164,11 @@ function boot(): void {
     // rebuild the post stack (SSAO/bloom toggles depend on the preset)
     post.build();
     post.resize();
+    // atmosphere: swap the mote system for the new count; toggle reflections
+    engine.scene.remove(atmosphere.group);
+    atmosphere = new Atmosphere(engine.quality.particles);
+    engine.scene.add(atmosphere.group);
+    props.setReflections(engine.quality.reflections);
   }
 
   // ---- resize ----
@@ -179,9 +188,11 @@ function boot(): void {
   // ---- main loop ----
   let last = performance.now();
   let fear = 0;
+  let clock = 0;
   function frame(now: number): void {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    clock += dt;
 
     if (state === 'playing' && input.locked) {
       player.update(dt, input);
@@ -195,6 +206,9 @@ function boot(): void {
       fear += (scares.fearLevel - fear) * damp(dt, 3);
       post.setFear(fear);
     }
+
+    // atmosphere drifts continuously so the world stays alive behind menus
+    atmosphere.update(dt, clock);
 
     ui.update(dt);
     post.render(dt);

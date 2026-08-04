@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { LAYOUT, DOOR_POS } from './layout';
 import { woodMaterial } from './Materials';
 import type { Interactable } from '../gameplay/Interaction';
@@ -85,15 +86,19 @@ export class Props {
   private portraitEvil: THREE.CanvasTexture;
   disturbingPortraits = false;
 
-  readonly mirror: THREE.Mesh;
-  private mirrorMat: THREE.MeshBasicMaterial;
+  readonly mirror: THREE.Mesh;              // stable transform anchor (fallback plane)
+  private reflector: Reflector | null = null;
+  private overlay!: THREE.Mesh;             // face-flash layer in front of the glass
+  private overlayMat!: THREE.MeshBasicMaterial;
+  private overlayOpacity = 0;
+  private overlayTarget = 0;
 
   private roach: THREE.Mesh;
   private roachT = 0;
 
   phoneRinging = false;
 
-  constructor(envMap: THREE.Texture | null, private cb: PropCallbacks) {
+  constructor(envMap: THREE.Texture | null, private cb: PropCallbacks, reflections = false) {
     const env = (m: THREE.MeshStandardMaterial) => {
       if (envMap) { m.envMap = envMap; m.envMapIntensity = 0.4; }
       return m;
@@ -201,10 +206,30 @@ export class Props {
     );
     pedestal.position.set(-6.5, 0.38, -10.0);
     this.group.add(pedestal);
-    this.mirrorMat = new THREE.MeshBasicMaterial({ color: 0x05070a });
-    this.mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.7), this.mirrorMat);
+    const glassGeo = new THREE.PlaneGeometry(0.5, 0.7);
+    // fallback dark glass — always present, and the stable transform anchor
+    this.mirror = new THREE.Mesh(glassGeo, new THREE.MeshStandardMaterial({
+      color: 0x05070a, roughness: 0.08, metalness: 0.9, envMap, envMapIntensity: 0.5,
+    }));
     this.mirror.position.set(-6.5, 1.55, -9.92);
     this.group.add(this.mirror);
+    // live reflector (created regardless; visibility gated by quality)
+    try {
+      this.reflector = new Reflector(glassGeo, {
+        textureWidth: 512, textureHeight: 512, color: 0x505a60,
+      });
+      this.reflector.position.set(-6.5, 1.55, -9.915);
+      this.group.add(this.reflector);
+    } catch {
+      this.reflector = null;
+    }
+    this.setReflections(reflections);
+    // face-flash overlay in front of the glass
+    this.overlayMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+    this.overlay = new THREE.Mesh(glassGeo, this.overlayMat);
+    this.overlay.position.set(-6.5, 1.55, -9.905);
+    this.overlay.renderOrder = 4;
+    this.group.add(this.overlay);
     const mFrame = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.76, 0.04), frameMat);
     mFrame.position.set(-6.5, 1.55, -9.9);
     this.group.add(mFrame);
@@ -269,22 +294,32 @@ export class Props {
     }
   }
 
-  /** Briefly show a texture in the mirror (e.g. a face), then fade to dark. */
+  /** Toggle the live reflection on/off (quality-driven). */
+  setReflections(enabled: boolean): void {
+    const on = enabled && this.reflector !== null;
+    if (this.reflector) this.reflector.visible = on;
+    this.mirror.visible = !on; // dark fallback when reflection is off
+  }
+
+  /** Fade a face texture in over the glass (or clear it). */
   mirrorFlash(tex: THREE.Texture | null): void {
     if (tex) {
-      this.mirrorMat.map = tex;
-      this.mirrorMat.color.setRGB(1, 1, 1);
+      this.overlayMat.map = tex;
+      this.overlayMat.needsUpdate = true;
+      this.overlayTarget = 1;
     } else {
-      this.mirrorMat.map = null;
-      this.mirrorMat.color.setHex(0x05070a);
+      this.overlayTarget = 0;
     }
-    this.mirrorMat.needsUpdate = true;
   }
 
   update(dt: number): void {
     // door swing
     this.doorAngle += (this.doorTarget - this.doorAngle) * damp(dt, 6);
     this.door.rotation.y = this.doorAngle;
+
+    // mirror face-flash fade
+    this.overlayOpacity += (this.overlayTarget - this.overlayOpacity) * damp(dt, 10);
+    this.overlayMat.opacity = this.overlayOpacity;
 
     // clock
     if (this.clockSpin !== 0) {
