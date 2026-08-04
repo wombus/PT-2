@@ -25,8 +25,8 @@ export class Lighting {
   private bulbWorld = new THREE.Vector3();
 
   constructor(shadowMapSize: number) {
-    // very low cold ambient so shadows never go pure black-crushed
-    this.ambient = new THREE.HemisphereLight(0x20242e, 0x080604, 0.12);
+    // low cold ambient so shadows never go pure black-crushed
+    this.ambient = new THREE.HemisphereLight(0x2a3040, 0x0a0806, 0.32);
     this.group.add(this.ambient);
 
     const positions: [number, number, number, boolean][] = [
@@ -39,7 +39,7 @@ export class Lighting {
     const bulbMat = () => new THREE.MeshBasicMaterial({ color: 0xffd8a0 });
 
     positions.forEach(([x, y, z, shadow], idx) => {
-      const light = new THREE.PointLight(0xffb15a, 12, 12, 2);
+      const light = new THREE.PointLight(0xffb15a, 26, 16, 2);
       light.position.set(x, y, z);
       if (shadow && shadowMapSize > 0) {
         light.castShadow = true;
@@ -125,12 +125,12 @@ export class Lighting {
 
   blackout(): void {
     this.practicals.forEach((p) => (p.target = 0));
-    this.ambient.intensity = 0.02;
+    this.ambient.intensity = 0.05;
   }
 
   restore(): void {
     this.practicals.forEach((p) => (p.target = p.base));
-    this.ambient.intensity = 0.12;
+    this.ambient.intensity = 0.32;
   }
 
   /** Dim everything toward a factor of base (mood). */

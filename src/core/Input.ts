@@ -14,6 +14,7 @@ export class Input {
   onLockChange: (locked: boolean) => void = () => {};
   onInteract: () => void = () => {};
   onPause: () => void = () => {};
+  onCanvasClick: () => void = () => {};
 
   private readonly el: HTMLElement;
 
@@ -36,6 +37,13 @@ export class Input {
 
     document.addEventListener('mousedown', () => {
       if (this.locked) this.onInteract();
+      else this.onCanvasClick();
+    });
+
+    // pointer lock can be refused (e.g. Chrome's ~1s re-lock cooldown); don't crash
+    document.addEventListener('pointerlockerror', () => {
+      this.locked = false;
+      this.onLockChange(false);
     });
 
     document.addEventListener('pointerlockchange', () => {
@@ -46,7 +54,9 @@ export class Input {
   }
 
   requestLock(): void {
-    this.el.requestPointerLock();
+    // newer Chrome returns a promise that can reject; swallow it
+    const r = this.el.requestPointerLock() as unknown as Promise<void> | undefined;
+    if (r && typeof r.catch === 'function') r.catch(() => {});
   }
 
   exitLock(): void {

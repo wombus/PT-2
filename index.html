@@ -137,6 +137,21 @@
         pointer-events: none;
       }
 
+      #click-hint {
+        position: fixed; inset: 0; z-index: 33; display: flex; align-items: center; justify-content: center;
+        text-align: center; pointer-events: none;
+        background: radial-gradient(ellipse at center, rgba(0,0,0,0.35), rgba(0,0,0,0.7));
+      }
+      #click-hint.hidden { display: none; }
+      #click-hint .ch-big {
+        font-size: clamp(1.2rem, 3.5vw, 2rem); letter-spacing: 0.35em; text-transform: uppercase;
+        color: #e6e0d4; text-shadow: 0 2px 16px #000; animation: hintPulse 1.8s infinite;
+      }
+      #click-hint .ch-sub {
+        margin-top: 1.4rem; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #6b655c;
+      }
+      @keyframes hintPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
       .corner-note { position: fixed; bottom: 2%; right: 2.5%; font-size: 0.7rem; letter-spacing: 0.2em; color: #322e29; z-index: 51; }
 
       /* Loading */
@@ -161,6 +176,14 @@
       <div id="loop-indicator"></div>
     </div>
     <div id="pause-hint" class="hidden">Esc — pause</div>
+
+    <!-- Click-to-capture prompt (shown while playing but pointer not locked) -->
+    <div id="click-hint" class="hidden">
+      <div>
+        <div class="ch-big">Click to look around</div>
+        <div class="ch-sub">move: W A S D · look: mouse · interact: E · Esc: pause</div>
+      </div>
+    </div>
 
     <!-- Loading -->
     <div id="loading" class="overlay">

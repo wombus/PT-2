@@ -25,6 +25,7 @@ export class Ui {
   private pause = el('pause');
   private hud = el('hud');
   private pauseHint = el('pause-hint');
+  private clickHint = el('click-hint');
 
   private reticle = el('reticle');
   private prompt = el('prompt');
@@ -63,6 +64,9 @@ export class Ui {
   }
   showPause(): void { this.pause.classList.remove('hidden'); }
   hidePause(): void { this.pause.classList.add('hidden'); }
+
+  showClickHint(): void { this.clickHint.classList.remove('hidden'); }
+  hideClickHint(): void { this.clickHint.classList.add('hidden'); }
 
   enterGame(): void {
     this.hideMenus();
