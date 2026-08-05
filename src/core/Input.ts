@@ -28,6 +28,7 @@ export class Input {
   onInteract: () => void = () => {};
   onPause: () => void = () => {};
   onCanvasClick: () => void = () => {};
+  onFirstTouch: () => void = () => {};
 
   private readonly el: HTMLElement;
   private moveId: number | null = null;
@@ -37,9 +38,19 @@ export class Input {
 
   constructor(el: HTMLElement) {
     this.el = el;
-    this.touchCapable = typeof matchMedia !== 'undefined'
-      && matchMedia('(pointer: coarse)').matches
-      && !matchMedia('(pointer: fine)').matches;
+    // Robust: any touch-capable device. (The old "coarse && !fine" test failed
+    // on phones whose browser also reports a fine pointer, stranding them in the
+    // desktop pointer-lock flow.)
+    this.touchCapable =
+      (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
+      (typeof matchMedia !== 'undefined' && matchMedia('(any-pointer: coarse)').matches) ||
+      'ontouchstart' in window;
+
+    // Safety net: the first real touch anywhere flips us into touch mode, so the
+    // game can never get stuck in the desktop flow on a device we mis-detected.
+    document.addEventListener('touchstart', () => {
+      if (!this.touch) { this.touch = true; this.onFirstTouch(); }
+    }, { passive: true, capture: true });
 
     window.addEventListener('keydown', (e) => {
       const k = e.code;

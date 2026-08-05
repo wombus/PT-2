@@ -142,21 +142,33 @@ function boot(): void {
 
   // ---- input ----
   const input = new Input(engine.renderer.domElement);
-  const touch = input.touchCapable;
-  if (touch) ui.enableTouchUi();
+  let touchMode = input.touchCapable;
+  if (touchMode) ui.enableTouchUi();
+
+  // first finger touch anywhere → switch into touch mode, even if we mis-detected
+  input.onFirstTouch = () => {
+    if (touchMode) return;
+    touchMode = true;
+    ui.enableTouchUi();
+    if (state === 'playing') {
+      ui.hideClickHint();
+      ui.showTouchControls();
+      ui.say('Left side: move  ·  Right side: look  ·  Tap: interact', 6);
+    }
+  };
 
   input.onInteract = () => {
-    if (state === 'playing' && (input.locked || touch) && !loop.transitioning) interaction.use();
+    if (state === 'playing' && (input.locked || touchMode) && !loop.transitioning) interaction.use();
   };
   input.onPause = () => togglePause();
   // clicking the world while unlocked (re)captures the pointer — desktop only
-  input.onCanvasClick = () => { if (!touch && state === 'playing' && !input.locked) input.requestLock(); };
+  input.onCanvasClick = () => { if (!touchMode && state === 'playing' && !input.locked) input.requestLock(); };
   input.onLockChange = (locked) => {
     if (locked) {
       state = 'playing';
       ui.hideClickHint();
       ui.hidePause();
-    } else if (state === 'playing' && !touch) {
+    } else if (state === 'playing' && !touchMode) {
       // lost the pointer without opening the menu → invite a click to resume
       ui.showClickHint();
     }
@@ -166,7 +178,7 @@ function boot(): void {
     if (state === 'playing') {
       state = 'paused';
       ui.hideClickHint();
-      if (!touch) input.exitLock();
+      if (!touchMode) input.exitLock();
       ui.showPause();
     } else if (state === 'paused') {
       resumeGame();
@@ -179,7 +191,7 @@ function boot(): void {
     ui.enterGame();
     state = 'playing';
     loop.begin();
-    if (touch) {
+    if (touchMode) {
       ui.showTouchControls();
       ui.say('Left side: move  ·  Right side: look  ·  Tap: interact', 6);
     } else {
@@ -191,7 +203,7 @@ function boot(): void {
   function resumeGame(): void {
     ui.hidePause();
     state = 'playing';
-    if (touch) return;
+    if (touchMode) return;
     ui.showClickHint();
     input.requestLock();
   }
@@ -234,7 +246,7 @@ function boot(): void {
     last = now;
     clock += dt;
 
-    if (state === 'playing' && (input.locked || touch)) {
+    if (state === 'playing' && (input.locked || touchMode)) {
       player.update(dt, input);
       interaction.update();
       ui.setPrompt(interaction.focused ? interaction.focused.prompt : null);
@@ -246,7 +258,7 @@ function boot(): void {
       fear += (scares.fearLevel - fear) * damp(dt, 3);
       post.setFear(fear);
 
-      if (touch) ui.updateStick(input.stickActive, input.stickOX, input.stickOY, input.stickKX, input.stickKY);
+      if (touchMode) ui.updateStick(input.stickActive, input.stickOX, input.stickOY, input.stickKX, input.stickKY);
     }
 
     // atmosphere drifts continuously so the world stays alive behind menus
