@@ -4,6 +4,7 @@ export interface UiCallbacks {
   onBegin: () => void;   // Enter pressed on title
   onAccept: () => void;  // content warning accepted -> start play
   onResume: () => void;
+  onTouchPause: () => void;
   onQuality: (q: QualityLevel) => void;
   onSensitivity: (v: number) => void;
   onMaster: (v: number) => void;
@@ -26,6 +27,9 @@ export class Ui {
   private hud = el('hud');
   private pauseHint = el('pause-hint');
   private clickHint = el('click-hint');
+  private touchUi = el('touch-ui');
+  private stick = el('stick');
+  private stickKnob = el('stick-knob');
 
   private reticle = el('reticle');
   private prompt = el('prompt');
@@ -42,6 +46,7 @@ export class Ui {
     el<HTMLButtonElement>('btn-begin').addEventListener('click', () => cb.onBegin());
     el<HTMLButtonElement>('btn-accept').addEventListener('click', () => cb.onAccept());
     el<HTMLButtonElement>('btn-resume').addEventListener('click', () => cb.onResume());
+    el<HTMLButtonElement>('btn-touch-pause').addEventListener('click', () => cb.onTouchPause());
 
     el<HTMLSelectElement>('set-quality').addEventListener('change', (e) =>
       cb.onQuality((e.target as HTMLSelectElement).value as QualityLevel));
@@ -67,6 +72,18 @@ export class Ui {
 
   showClickHint(): void { this.clickHint.classList.remove('hidden'); }
   hideClickHint(): void { this.clickHint.classList.add('hidden'); }
+
+  // ---- touch controls ----
+  enableTouchUi(): void { document.body.classList.add('touch'); }
+  showTouchControls(): void { this.touchUi.classList.remove('hidden'); }
+  hideTouchControls(): void { this.touchUi.classList.add('hidden'); }
+  updateStick(active: boolean, ox: number, oy: number, kx: number, ky: number): void {
+    if (!active) { this.stick.classList.add('hidden'); return; }
+    this.stick.classList.remove('hidden');
+    this.stick.style.left = `${ox}px`;
+    this.stick.style.top = `${oy}px`;
+    this.stickKnob.style.transform = `translate(${kx - ox}px, ${ky - oy}px)`;
+  }
 
   enterGame(): void {
     this.hideMenus();

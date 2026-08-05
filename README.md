@@ -28,7 +28,16 @@ npm run preview  # serve the production build
 
 Any static host can serve `dist/` (the build uses relative paths).
 
+## Play online
+
+Pushes to this repo auto-deploy to **GitHub Pages** via
+`.github/workflows/deploy.yml`. Once Pages is enabled (Settings → Pages →
+Source: **GitHub Actions**), the game is live at
+`https://<owner>.github.io/PT-2/` — playable on desktop and mobile.
+
 ## Controls
+
+**Desktop**
 
 | Action        | Key |
 |---------------|-----|
@@ -36,6 +45,15 @@ Any static host can serve `dist/` (the build uses relative paths).
 | Look          | Mouse (click the screen to capture the pointer) |
 | Interact      | `E`, `Space`, or left-click |
 | Pause / menu  | `Esc` |
+
+**Mobile (touch)** — landscape recommended
+
+| Action    | Gesture |
+|-----------|---------|
+| Move      | Left-thumb virtual stick |
+| Look      | Drag on the right side of the screen |
+| Interact  | Tap |
+| Pause     | On-screen ❚❚ button |
 
 Walk to the end of the hall and **open the door** — you'll find yourself back at
 the start of the same hallway, one loop deeper and more wrong. It does not end.

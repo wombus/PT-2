@@ -126,6 +126,7 @@ function boot(): void {
     onBegin: () => { state = 'warning'; ui.showWarning(); },
     onAccept: () => startGame(),
     onResume: () => resumeGame(),
+    onTouchPause: () => togglePause(),
     onQuality: (q) => applyQuality(q),
     onSensitivity: (v) => { input.sensitivity = v; },
     onMaster: (v) => audio.setMasterVolume(v),
@@ -141,24 +142,36 @@ function boot(): void {
 
   // ---- input ----
   const input = new Input(engine.renderer.domElement);
-  input.onInteract = () => { if (state === 'playing' && input.locked && !loop.transitioning) interaction.use(); };
-  // Esc toggles the pause menu
-  input.onPause = () => {
-    if (state === 'playing') { state = 'paused'; ui.hideClickHint(); input.exitLock(); ui.showPause(); }
-    else if (state === 'paused') resumeGame();
+  const touch = input.touchCapable;
+  if (touch) ui.enableTouchUi();
+
+  input.onInteract = () => {
+    if (state === 'playing' && (input.locked || touch) && !loop.transitioning) interaction.use();
   };
-  // clicking the world while unlocked (re)captures the pointer — the key fix
-  input.onCanvasClick = () => { if (state === 'playing' && !input.locked) input.requestLock(); };
+  input.onPause = () => togglePause();
+  // clicking the world while unlocked (re)captures the pointer — desktop only
+  input.onCanvasClick = () => { if (!touch && state === 'playing' && !input.locked) input.requestLock(); };
   input.onLockChange = (locked) => {
     if (locked) {
       state = 'playing';
       ui.hideClickHint();
       ui.hidePause();
-    } else if (state === 'playing') {
+    } else if (state === 'playing' && !touch) {
       // lost the pointer without opening the menu → invite a click to resume
       ui.showClickHint();
     }
   };
+
+  function togglePause(): void {
+    if (state === 'playing') {
+      state = 'paused';
+      ui.hideClickHint();
+      if (!touch) input.exitLock();
+      ui.showPause();
+    } else if (state === 'paused') {
+      resumeGame();
+    }
+  }
 
   async function startGame(): Promise<void> {
     await audio.init();
@@ -166,13 +179,19 @@ function boot(): void {
     ui.enterGame();
     state = 'playing';
     loop.begin();
-    ui.showClickHint();   // stays until the pointer actually locks
-    input.requestLock();
+    if (touch) {
+      ui.showTouchControls();
+      ui.say('Left side: move  ·  Right side: look  ·  Tap: interact', 6);
+    } else {
+      ui.showClickHint();   // stays until the pointer actually locks
+      input.requestLock();
+    }
   }
 
   function resumeGame(): void {
     ui.hidePause();
     state = 'playing';
+    if (touch) return;
     ui.showClickHint();
     input.requestLock();
   }
@@ -215,7 +234,7 @@ function boot(): void {
     last = now;
     clock += dt;
 
-    if (state === 'playing' && input.locked) {
+    if (state === 'playing' && (input.locked || touch)) {
       player.update(dt, input);
       interaction.update();
       ui.setPrompt(interaction.focused ? interaction.focused.prompt : null);
@@ -226,6 +245,8 @@ function boot(): void {
 
       fear += (scares.fearLevel - fear) * damp(dt, 3);
       post.setFear(fear);
+
+      if (touch) ui.updateStick(input.stickActive, input.stickOX, input.stickOY, input.stickKX, input.stickKY);
     }
 
     // atmosphere drifts continuously so the world stays alive behind menus

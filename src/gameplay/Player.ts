@@ -58,10 +58,9 @@ export class Player {
     // ---- movement ----
     let fwd = 0, strafe = 0;
     if (!this.frozen) {
-      if (input.isDown('KeyW', 'ArrowUp')) fwd += 1;
-      if (input.isDown('KeyS', 'ArrowDown')) fwd -= 1;
-      if (input.isDown('KeyD', 'ArrowRight')) strafe += 1;
-      if (input.isDown('KeyA', 'ArrowLeft')) strafe -= 1;
+      const mv = input.getMove();
+      fwd = mv.fwd;
+      strafe = mv.strafe;
     }
 
     this.forward.set(Math.sin(this.yaw) * -1, 0, Math.cos(this.yaw) * -1);
