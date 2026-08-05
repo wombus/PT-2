@@ -30,7 +30,7 @@ function boot(): void {
   const envMap = assets.buildEnvironment();
   engine.scene.environment = envMap;
 
-  const hallway = new Hallway(envMap);
+  const hallway = new Hallway(envMap, engine.quality.reflections);
   engine.scene.add(hallway.group);
 
   const lighting = new Lighting(engine.quality.shadowMapSize);
@@ -189,6 +189,7 @@ function boot(): void {
     atmosphere = new Atmosphere(engine.quality.particles);
     engine.scene.add(atmosphere.group);
     props.setReflections(engine.quality.reflections);
+    hallway.setReflections(engine.quality.reflections);
   }
 
   // ---- resize ----

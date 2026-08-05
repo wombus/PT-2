@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { LAYOUT } from './layout';
 import { wallpaperMaterial, floorMaterial, plasterMaterial, woodMaterial } from './Materials';
 
@@ -11,8 +12,9 @@ export class Hallway {
   readonly group = new THREE.Group();
   readonly walls: Record<string, THREE.Mesh> = {};
   private wallMat: THREE.MeshStandardMaterial;
+  private floorReflector: Reflector | null = null;
 
-  constructor(envMap: THREE.Texture | null) {
+  constructor(envMap: THREE.Texture | null, reflections = false) {
     this.wallMat = wallpaperMaterial();
     const floorMat = floorMaterial();
     const ceilMat = plasterMaterial('#161410');
@@ -33,6 +35,30 @@ export class Hallway {
     floor.position.set(-5, 0, -5);
     floor.receiveShadow = true;
     this.group.add(floor);
+
+    // Real-time planar reflection blended over the varnished boards, so the
+    // lamp, walls and figures genuinely reflect in the polished floor.
+    // Gated to High/Ultra (it is an extra full scene render each frame).
+    const refl = new Reflector(new THREE.PlaneGeometry(12.4, 14.2), {
+      textureWidth: 1024,
+      textureHeight: 1024,
+      color: 0x888888,
+    });
+    refl.rotation.x = -Math.PI / 2;
+    refl.position.set(-5, 0.008, -5);
+    const rmat = refl.material as THREE.ShaderMaterial;
+    rmat.transparent = true;
+    rmat.depthWrite = false;
+    // blend the reflection at ~30% over the wood beneath (subtle gloss, not a mirror)
+    rmat.fragmentShader = rmat.fragmentShader.replace(
+      'gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );',
+      'gl_FragColor = vec4( base.rgb, 0.3 );',
+    );
+    rmat.needsUpdate = true;
+    refl.renderOrder = 1;
+    refl.visible = reflections;
+    this.floorReflector = refl;
+    this.group.add(refl);
 
     const ceil = new THREE.Mesh(new THREE.PlaneGeometry(12.4, 14.2), ceilMat);
     ceil.rotation.x = Math.PI / 2;
@@ -116,5 +142,10 @@ export class Hallway {
 
   get material(): THREE.MeshStandardMaterial {
     return this.wallMat;
+  }
+
+  /** Toggle the live floor reflection (quality-driven). */
+  setReflections(enabled: boolean): void {
+    if (this.floorReflector) this.floorReflector.visible = enabled;
   }
 }

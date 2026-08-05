@@ -44,8 +44,11 @@ export class Lighting {
       if (shadow && shadowMapSize > 0) {
         light.castShadow = true;
         light.shadow.mapSize.set(shadowMapSize, shadowMapSize);
-        light.shadow.bias = -0.002;
-        light.shadow.radius = 3;
+        light.shadow.bias = -0.0015;
+        light.shadow.normalBias = 0.02;
+        light.shadow.radius = 6;         // softer contact shadows
+        light.shadow.blurSamples = 24;
+        light.shadow.camera.near = 0.1;
         light.shadow.camera.far = 16;
       }
       this.group.add(light);
